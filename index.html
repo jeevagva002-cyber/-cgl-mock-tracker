@@ -1,0 +1,668 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style>
+<meta name="theme-color" content="#1B4FE0">
+<meta name="application-name" content="CGL Mock Tracker">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="icon" href="./icons/icon-192.png">
+<link rel="apple-touch-icon" href="./icons/icon-192.png">
+</head><body>
+<title>CGL Mock Tracker</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Layout: one narrow column. Summary card with an OMR-style strip of 53 bubbles (hardest to easiest), filters, then one row per shift with a fill-in bubble. */
+:root {
+  --bg: #EEF2F9;
+  --surface: #FFFFFF;
+  --surface-2: #F4F7FC;
+  --ink: #0D1A36;
+  --muted: #566582;
+  --line: #D5DDEC;
+  --accent: #1B4FE0;
+  --accent-ink: #FFFFFF;
+  --hard: #D6453D;
+  --easy: #2E9E6B;
+  --focus: #1B4FE0;
+  --font-body: "Archivo", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-data: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0A1226;
+    --surface: #111B35;
+    --surface-2: #16223F;
+    --ink: #E7EDFB;
+    --muted: #93A1C0;
+    --line: #233253;
+    --accent: #6F95FF;
+    --accent-ink: #071029;
+    --hard: #F0716A;
+    --easy: #4CC38A;
+    --focus: #8FADFF;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0A1226;
+  --surface: #111B35;
+  --surface-2: #16223F;
+  --ink: #E7EDFB;
+  --muted: #93A1C0;
+  --line: #233253;
+  --accent: #6F95FF;
+  --accent-ink: #071029;
+  --hard: #F0716A;
+  --easy: #4CC38A;
+  --focus: #8FADFF;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.4;
+  padding-block: 22px 64px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  -webkit-text-size-adjust: 100%;
+}
+button, input { font: inherit; color: inherit; }
+.mono { font-family: var(--font-data); font-variant-numeric: tabular-nums; }
+.wrap { max-width: 680px; margin: 0 auto; display: flex; flex-direction: column; gap: 14px; }
+
+/* header */
+.eyebrow { margin: 0 0 6px; font: 500 11px/1.2 var(--font-data); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+h1 { margin: 0; font-weight: 800; font-size: clamp(30px, 9vw, 40px); line-height: 1.02; letter-spacing: -.025em; text-wrap: balance; }
+.lede { margin: 8px 0 0; color: var(--muted); max-width: 52ch; }
+
+/* cards */
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px; min-width: 0; }
+
+/* summary */
+.sum-top { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; }
+.big { display: flex; align-items: baseline; gap: 8px; }
+.big .n { font: 600 46px/1 var(--font-data); letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
+.big .of { font: 500 18px/1 var(--font-data); color: var(--muted); }
+.pct { text-align: right; line-height: 1.15; }
+.pct b { display: block; font: 600 22px/1.1 var(--font-data); font-variant-numeric: tabular-nums; }
+.pct span { font-size: 12px; color: var(--muted); }
+.track { height: 8px; border-radius: 99px; background: var(--surface-2); border: 1px solid var(--line); overflow: hidden; margin-top: 14px; }
+.fill { height: 100%; width: 0; background: var(--accent); border-radius: 99px; transition: width .25s ease; }
+.dots { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 16px; }
+.dots i { width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--c); background: transparent; transition: background .15s; --c: color-mix(in oklab, var(--easy) calc(var(--t) * 100%), var(--hard)); }
+.dots i.on { background: var(--c); }
+.dots-cap { display: flex; justify-content: space-between; margin-top: 8px; font: 500 11px/1.2 var(--font-data); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.shifts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line); }
+.ss { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.ss .sl { font-weight: 700; font-size: 13px; }
+.ss .st { font: 400 11px/1.2 var(--font-data); color: var(--muted); }
+.ss .sc { font: 600 15px/1.2 var(--font-data); font-variant-numeric: tabular-nums; margin-top: 2px; }
+.mini { height: 4px; border-radius: 4px; background: var(--line); overflow: hidden; margin-top: 4px; }
+.mini i { display: block; height: 100%; background: var(--accent); width: 0; transition: width .25s ease; }
+
+/* controls */
+.controls { display: flex; flex-direction: column; gap: 10px; }
+.seg { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 3px; padding: 3px; background: var(--surface-2); border: 1px solid var(--line); border-radius: 11px; }
+.seg button { border: 0; background: transparent; color: var(--muted); font-weight: 600; font-size: 13px; padding: 9px 4px; border-radius: 8px; cursor: pointer; display: flex; justify-content: center; align-items: baseline; gap: 5px; min-width: 0; }
+.seg button b { font: 500 11px var(--font-data); opacity: .85; }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+.seg button:focus-visible, .head:focus-visible, .btn:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+.label { font: 500 11px/1.2 var(--font-data); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin: 0 0 6px 2px; }
+
+.listhead { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-top: 2px; }
+.listhead .count { font: 500 12px var(--font-data); color: var(--muted); }
+.listhead .seg { min-width: 200px; }
+
+/* list */
+.box { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+.list, .group ol { list-style: none; margin: 0; padding: 0; }
+.group { display: flex; flex-direction: column; }
+.group + .group { margin-top: 10px; }
+.group h3 { margin: 0; padding: 10px 14px; display: flex; justify-content: space-between; align-items: baseline; font-size: 13px; font-weight: 700; background: var(--surface-2); border-bottom: 1px solid var(--line); }
+.group h3 .gc { font: 500 12px var(--font-data); color: var(--muted); }
+.group .box { border-radius: 14px; }
+
+.row { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; align-items: center; column-gap: 4px; padding: 4px 14px 4px 6px; border-top: 1px solid var(--line); transition: background .15s; }
+.box > ol > .row:first-child, .box > .row:first-child { border-top: 0; }
+.row.is-done { background: var(--surface-2); }
+.row.is-done .l1 { color: var(--muted); }
+
+.tick { position: relative; display: grid; place-items: center; width: 44px; height: 44px; cursor: pointer; }
+.tick input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
+.bubble { width: 26px; height: 26px; border-radius: 50%; border: 2px solid var(--muted); display: grid; place-items: center; transition: background .15s, border-color .15s; }
+.bubble::after { content: ""; width: 6px; height: 12px; border: solid var(--accent-ink); border-width: 0 2.5px 2.5px 0; transform: rotate(45deg) scale(0); margin-top: -3px; transition: transform .15s; }
+.tick input:checked + .bubble { background: var(--accent); border-color: var(--accent); }
+.tick input:checked + .bubble::after { transform: rotate(45deg) scale(1); }
+.tick input:focus-visible + .bubble { outline: 3px solid var(--focus); outline-offset: 3px; }
+
+.head { background: none; border: 0; text-align: left; padding: 9px 4px; cursor: pointer; display: flex; flex-direction: column; gap: 1px; min-width: 0; border-radius: 8px; }
+.l1 { font-weight: 700; font-size: 16px; }
+.l1 em { font-style: normal; font-weight: 500; font-size: 13px; color: var(--muted); margin-left: 4px; }
+.l2 { font-size: 13px; color: var(--muted); }
+.np { font-size: 12px; color: var(--accent); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+
+.met { display: flex; flex-direction: column; align-items: flex-end; gap: 1px; }
+.avg { display: flex; align-items: center; gap: 6px; font: 600 15px var(--font-data); font-variant-numeric: tabular-nums; }
+.avg i { width: 9px; height: 9px; border-radius: 50%; background: color-mix(in oklab, var(--easy) calc(var(--t) * 100%), var(--hard)); }
+.rk { font: 400 11px var(--font-data); color: var(--muted); }
+
+.detail { grid-column: 1 / -1; padding: 2px 0 14px 44px; display: flex; flex-direction: column; gap: 8px; }
+.safe { display: grid; grid-template-columns: repeat(auto-fit, minmax(64px, 1fr)); gap: 6px; margin: 0; }
+.safe div { background: var(--surface-2); border: 1px solid var(--line); border-radius: 8px; padding: 6px 4px; text-align: center; }
+.row.is-done .safe div { background: var(--surface); }
+.safe dt { font: 500 10px var(--font-data); letter-spacing: .1em; color: var(--muted); }
+.safe dd { margin: 2px 0 0; font: 600 13px var(--font-data); font-variant-numeric: tabular-nums; }
+.note { width: 100%; padding: 10px 12px; border-radius: 9px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); font-size: 14px; }
+.note:focus-visible { outline: 3px solid var(--focus); outline-offset: 1px; }
+.note::placeholder { color: var(--muted); opacity: .8; }
+
+.empty { padding: 28px 18px; text-align: center; color: var(--muted); }
+
+/* sticky progress */
+.bar { position: fixed; left: 0; right: 0; top: 0; z-index: 20; background: var(--surface); border-bottom: 1px solid var(--line); padding: env(safe-area-inset-top, 0px) max(16px, env(safe-area-inset-right, 0px)) 0 max(16px, env(safe-area-inset-left, 0px)); transform: translateY(-110%); transition: transform .2s ease; }
+.bar.on { transform: none; }
+.bar-in { max-width: 680px; margin: 0 auto; display: flex; align-items: center; gap: 12px; padding: 10px 0; }
+.bar-in span:first-child { font-weight: 700; font-size: 14px; flex: none; }
+.bar-in .track { flex: 1; margin: 0; height: 6px; }
+.bar-in .mono { font-weight: 600; font-size: 14px; flex: none; }
+
+/* footer */
+.foot { display: flex; flex-direction: column; gap: 12px; color: var(--muted); font-size: 12.5px; }
+.foot p { margin: 0; max-width: 62ch; }
+.sync { font: 500 12px var(--font-data); }
+.btn { align-self: flex-start; background: transparent; border: 1px solid var(--line); color: var(--ink); padding: 9px 14px; border-radius: 9px; font-weight: 600; font-size: 13px; cursor: pointer; }
+.btn.danger { border-color: var(--hard); color: var(--hard); }
+.confirm { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.confirm span { color: var(--ink); font-size: 13px; }
+
+@media (max-width: 420px) {
+  .listhead .seg { width: 100%; }
+  .big .n { font-size: 40px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; }
+}
+</style>
+
+<div class="bar" id="bar" aria-hidden="true">
+  <div class="bar-in">
+    <span>CGL Mock Tracker</span>
+    <div class="track"><div class="fill" id="barFill"></div></div>
+    <span class="mono" id="barCount">0/53</span>
+  </div>
+</div>
+
+<main class="wrap">
+  <header>
+    <p class="eyebrow">SSC CGL 2026 · 53 shifts</p>
+    <h1>Mock Tracker</h1>
+    <p class="lede">One mock per shift, hardest paper first. Tap the circle when you finish a mock.</p>
+  </header>
+
+  <section class="card" id="summary" aria-label="Progress">
+    <div class="sum-top">
+      <div class="big"><span class="n" id="doneN">0</span><span class="of" id="ofN">/ 53</span></div>
+      <div class="pct"><b id="pct">0%</b><span>finished</span></div>
+    </div>
+    <div class="track" role="progressbar" aria-label="Mocks finished" aria-valuemin="0" aria-valuemax="53" aria-valuenow="0" id="track"><div class="fill" id="fill"></div></div>
+    <div class="dots" id="dots" aria-hidden="true"></div>
+    <div class="dots-cap" aria-hidden="true"><span>Hardest paper</span><span>Easiest</span></div>
+    <div class="shifts" id="shiftStats"></div>
+  </section>
+
+  <section class="controls" aria-label="Filters">
+    <div>
+      <p class="label" id="lblStatus">Show</p>
+      <div class="seg" id="segStatus" role="group" aria-labelledby="lblStatus">
+        <button type="button" id="st-all" data-status="all" aria-pressed="true">All <b id="cAll">53</b></button>
+        <button type="button" id="st-pending" data-status="pending" aria-pressed="false">Pending <b id="cPending">53</b></button>
+        <button type="button" id="st-done" data-status="done" aria-pressed="false">Done <b id="cDone">0</b></button>
+      </div>
+    </div>
+    <div>
+      <p class="label" id="lblShift">Shift</p>
+      <div class="seg" id="segShift" role="group" aria-labelledby="lblShift">
+        <button type="button" id="sh-0" data-shift="0" aria-pressed="true">Any</button>
+        <button type="button" id="sh-1" data-shift="1" aria-pressed="false">1</button>
+        <button type="button" id="sh-2" data-shift="2" aria-pressed="false">2</button>
+        <button type="button" id="sh-3" data-shift="3" aria-pressed="false">3</button>
+      </div>
+    </div>
+  </section>
+
+  <div class="listhead">
+    <span class="count" id="showing">Showing 53 of 53</span>
+    <div class="seg" id="segSort" role="group" aria-label="Sort order">
+      <button type="button" id="so-diff" data-sort="diff" aria-pressed="true">Hardest first</button>
+      <button type="button" id="so-date" data-sort="date" aria-pressed="false">By date</button>
+    </div>
+  </div>
+
+  <div id="list"></div>
+
+  <footer class="foot">
+    <p>Rank is by average raw marks in each shift: a lower average means a tougher paper. Safe raw score ranges are Tier-2 estimates from RankMitra raw-marks analysis, based on sample data (1,87,531 candidates) and 95,000 shortlisting against 10,731 vacancies.</p>
+    <p class="sync" id="sync" role="status">Saved in this browser</p>
+    <div id="resetArea">
+      <button type="button" class="btn" id="resetAsk">Clear all ticks and notes</button>
+      <div class="confirm" id="resetConfirm" hidden>
+        <span id="resetMsg">Clear everything?</span>
+        <button type="button" class="btn danger" id="resetYes">Yes, clear</button>
+        <button type="button" class="btn" id="resetNo">Keep</button>
+      </div>
+    </div>
+  </footer>
+</main>
+
+<script>
+(function () {
+  'use strict';
+
+  // rank, date, shift, average raw marks, lower bound of the UR safe range
+  var DATA = [
+    [1,'2026-10-24',3,94.06,118],[2,'2026-10-05',2,94.38,118],[3,'2026-10-13',3,95.33,119],
+    [4,'2026-10-28',3,97.30,121],[5,'2026-10-14',1,98.21,122],[6,'2026-10-09',1,99.55,123],
+    [7,'2026-10-15',2,101.68,125],[8,'2026-10-01',3,103.18,126],[9,'2026-10-08',2,103.55,127],
+    [10,'2026-10-13',2,103.81,127],[11,'2026-10-15',3,103.98,127],[12,'2026-10-12',3,104.16,127],
+    [13,'2026-10-15',1,104.32,127],[14,'2026-09-30',2,105.30,128],[15,'2026-10-10',2,105.37,128],
+    [16,'2026-10-12',1,106.16,129],[17,'2026-10-01',2,106.36,129],[18,'2026-10-14',3,106.83,129],
+    [19,'2026-10-09',3,107.05,129],[20,'2026-09-30',3,107.51,130],[21,'2026-10-16',2,107.51,130],
+    [22,'2026-10-23',1,107.56,130],[23,'2026-10-28',1,107.71,130],[24,'2026-10-13',1,108.75,131],
+    [25,'2026-10-07',2,108.84,131],[26,'2026-10-09',2,109.19,131],[27,'2026-10-07',3,109.23,131],
+    [28,'2026-10-10',3,109.45,131],[29,'2026-10-27',2,109.85,132],[30,'2026-10-14',2,110.41,132],
+    [31,'2026-10-22',2,110.52,132],[32,'2026-10-24',2,111.15,133],[33,'2026-10-06',1,111.26,133],
+    [34,'2026-10-27',3,111.53,133],[35,'2026-10-10',1,111.58,133],[36,'2026-10-05',1,111.95,134],
+    [37,'2026-10-07',1,112.72,134],[38,'2026-10-27',1,112.75,134],[39,'2026-10-08',3,112.76,134],
+    [40,'2026-10-22',1,113.03,135],[41,'2026-10-06',2,113.57,135],[42,'2026-10-12',2,113.95,135],
+    [43,'2026-10-22',3,114.26,136],[44,'2026-10-08',1,115.69,137],[45,'2026-10-28',2,116.69,138],
+    [46,'2026-10-05',3,116.81,138],[47,'2026-10-24',1,117.08,138],[48,'2026-10-16',1,118.87,140],
+    [49,'2026-10-23',2,119.04,140],[50,'2026-10-23',3,119.08,140],[51,'2026-10-06',3,120.32,141],
+    [52,'2026-10-01',1,122.24,143],[53,'2026-10-16',3,123.71,144]
+  ];
+  var SLOT = { 1: '10:00 AM', 2: '01:30 PM', 3: '05:00 PM' };
+  var MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  var DOW = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+
+  var minA = Math.min.apply(null, DATA.map(function (r) { return r[3]; }));
+  var maxA = Math.max.apply(null, DATA.map(function (r) { return r[3]; }));
+  var S = DATA.map(function (r) {
+    var ur = r[4];
+    return {
+      rank: r[0], date: r[1], shift: r[2], avg: r[3], t: (r[3] - minA) / (maxA - minA),
+      safe: [['UR', ur, ur + 3], ['OBC', ur - 2, ur + 1], ['EWS', ur - 6, ur - 3], ['SC', ur - 22, ur - 18], ['ST', ur - 30, ur - 26]]
+    };
+  });
+  var BY = {};
+  S.forEach(function (s) { BY[s.rank] = s; });
+  var N = S.length;
+
+  function $(id) { return document.getElementById(id); }
+  function esc(v) { return String(v).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function dparts(iso) {
+    var p = iso.split('-').map(Number);
+    return { d: p[2], mon: MON[p[1] - 1], dow: DOW[new Date(Date.UTC(p[0], p[1] - 1, p[2])).getUTCDay()] };
+  }
+  function fmtDay(iso) { var p = dparts(iso); return p.d + ' ' + p.mon; }
+  function rng(a) { return a[1] + '–' + a[2]; }
+  function todayISO() {
+    var d = new Date();
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  }
+
+  /* ---------- state ---------- */
+  var LS = 'cgl2026-mock-tracker-v1';
+  var LSUI = 'cgl2026-mock-tracker-ui';
+  var state = { v: 1, done: {}, notes: {} };
+  var dirty = false;
+  var ui = { status: 'all', shift: 0, sort: 'diff', open: {} };
+
+  function clean(o) {
+    var d = {}, n = {};
+    if (o && typeof o.done === 'object' && o.done) {
+      Object.keys(o.done).forEach(function (k) {
+        if (BY[k] && typeof o.done[k] === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(o.done[k])) d[k] = o.done[k];
+      });
+    }
+    if (o && typeof o.notes === 'object' && o.notes) {
+      Object.keys(o.notes).forEach(function (k) {
+        if (BY[k] && typeof o.notes[k] === 'string' && o.notes[k].trim()) n[k] = o.notes[k].slice(0, 80);
+      });
+    }
+    return { v: 1, done: d, notes: n };
+  }
+  function sortedObj(o) {
+    var out = {};
+    Object.keys(o).sort(function (a, b) { return a - b; }).forEach(function (k) { out[k] = o[k]; });
+    return out;
+  }
+  function ser(s) { return JSON.stringify([sortedObj(s.done), sortedObj(s.notes)]); }
+  function hasContent(s) { return Object.keys(s.done).length > 0 || Object.keys(s.notes).length > 0; }
+
+  function persistLocal() {
+    try { localStorage.setItem(LS, JSON.stringify({ state: state, dirty: dirty })); } catch (e) {}
+  }
+  function loadLocal() {
+    try {
+      var j = JSON.parse(localStorage.getItem(LS));
+      if (j && j.state) { state = clean(j.state); dirty = !!j.dirty; }
+    } catch (e) {}
+    try {
+      var u = JSON.parse(localStorage.getItem(LSUI));
+      if (u) {
+        if (['all', 'pending', 'done'].indexOf(u.status) > -1) ui.status = u.status;
+        if ([0, 1, 2, 3].indexOf(u.shift) > -1) ui.shift = u.shift;
+        if (['diff', 'date'].indexOf(u.sort) > -1) ui.sort = u.sort;
+      }
+    } catch (e) {}
+  }
+  function saveUI() {
+    try { localStorage.setItem(LSUI, JSON.stringify({ status: ui.status, shift: ui.shift, sort: ui.sort })); } catch (e) {}
+  }
+
+  /* ---------- sync (per-viewer private doc) ---------- */
+  var ref = null, mode = 'device', synced = false, saving = false, saveTimer = null, loadTimer = null;
+  function setStatus(msg) { $('sync').textContent = msg; }
+  function idleStatus() {
+    setStatus(mode === 'account' ? 'Saved · syncs across your devices' : 'Saved in this browser only');
+  }
+  function touch() {
+    dirty = true;
+    persistLocal();
+    setStatus('Saving…');
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(flush, 500);
+  }
+  function flush() {
+    if (!ref) { idleStatus(); return; }
+    if (saving) { saveTimer = setTimeout(flush, 300); return; }
+    saving = true;
+    var sent = ser(state);
+    var body = JSON.parse(JSON.stringify(state));
+    ref.set(body).then(function () {
+      if (ser(state) === sent) { dirty = false; persistLocal(); }
+      idleStatus();
+    }).catch(function () {
+      setStatus('Could not sync right now · saved in this browser');
+    }).then(function () { saving = false; });
+  }
+  function onRemote(snap) {
+    var meta = snap.metadata || {};
+    if (!synced) {
+      if (meta.fromCache) return;
+      synced = true;
+      clearTimeout(loadTimer);
+      mode = 'account';
+      if (!snap.exists) {
+        if (hasContent(state)) { dirty = true; flush(); } else { idleStatus(); }
+        return;
+      }
+      if (dirty) { flush(); return; }
+      adopt(snap.data());
+      idleStatus();
+      return;
+    }
+    if (meta.hasPendingWrites || dirty || saving) return;
+    adopt(snap.data());
+  }
+  function adopt(data) {
+    var remote = clean(data);
+    if (ser(remote) === ser(state)) return;
+    state = remote;
+    persistLocal();
+    renderAll();
+  }
+  function initSync() {
+    var c = window.claude;
+    if (!c || typeof c.use !== 'function') return;
+    Promise.all([c.use('db'), c.use('user')]).then(function (r) {
+      var db = r[0], user = r[1];
+      if (!db || !user) return null;
+      return user.id().then(function (id) {
+        if (!id) return null;
+        ref = db.collection('data/users/' + id).doc('cgl-progress');
+        loadTimer = setTimeout(function () {
+          if (!synced) setStatus('Cannot reach sync yet · using this browser');
+        }, 10000);
+        ref.onSnapshot(onRemote, function () {
+          clearTimeout(loadTimer);
+          ref = null; mode = 'device';
+          setStatus('Sync unavailable · saved in this browser');
+        });
+      });
+    }).catch(function () {});
+  }
+
+  /* ---------- rendering ---------- */
+  var listEl = $('list');
+  var rerenderTimer = null;
+
+  function line1(s) {
+    if (ui.sort === 'diff') {
+      var p = dparts(s.date);
+      return p.d + ' ' + p.mon + '<em>' + p.dow + '</em>';
+    }
+    return 'Shift ' + s.shift + '<em>' + SLOT[s.shift] + '</em>';
+  }
+  function line2(s) {
+    var d = state.done[s.rank];
+    if (ui.sort === 'diff') return 'Shift ' + s.shift + ' · ' + SLOT[s.shift] + (d ? ' · finished ' + fmtDay(d) : '');
+    return d ? 'Finished ' + fmtDay(d) : 'Safe UR ' + rng(s.safe[0]);
+  }
+  function visible(s) {
+    var d = !!state.done[s.rank];
+    if (ui.status === 'pending' && d) return false;
+    if (ui.status === 'done' && !d) return false;
+    if (ui.shift && s.shift !== ui.shift) return false;
+    return true;
+  }
+  function rowHTML(s) {
+    var done = !!state.done[s.rank];
+    var open = !!ui.open[s.rank];
+    var note = state.notes[s.rank] || '';
+    var p = dparts(s.date);
+    var label = p.d + ' ' + p.mon + ' shift ' + s.shift;
+    var safe = s.safe.map(function (a) { return '<div><dt>' + a[0] + '</dt><dd>' + rng(a) + '</dd></div>'; }).join('');
+    return '<li class="row' + (done ? ' is-done' : '') + '" data-rank="' + s.rank + '" style="--t:' + s.t.toFixed(3) + '">' +
+      '<label class="tick"><input type="checkbox" id="chk-' + s.rank + '" data-rank="' + s.rank + '"' + (done ? ' checked' : '') + ' aria-label="Finished mock for ' + label + '"><span class="bubble" aria-hidden="true"></span></label>' +
+      '<button type="button" class="head" id="hd-' + s.rank + '" data-rank="' + s.rank + '" aria-expanded="' + open + '" aria-controls="det-' + s.rank + '">' +
+        '<span class="l1">' + line1(s) + '</span>' +
+        '<span class="l2">' + esc(line2(s)) + '</span>' +
+        '<span class="np"' + (note ? '' : ' hidden') + '>' + esc(note) + '</span>' +
+      '</button>' +
+      '<div class="met"><span class="avg"><i></i>' + s.avg.toFixed(2) + '</span><span class="rk">rank ' + s.rank + '</span></div>' +
+      '<div class="detail" id="det-' + s.rank + '"' + (open ? '' : ' hidden') + '>' +
+        '<dl class="safe" aria-label="Safe raw score, Tier-2">' + safe + '</dl>' +
+        '<input class="note" id="note-' + s.rank + '" data-rank="' + s.rank + '" type="text" maxlength="80" placeholder="Mock name or score, e.g. Mock 14 · 128/200" aria-label="Mock name or score for ' + label + '" value="' + esc(note) + '">' +
+      '</div></li>';
+  }
+  function dayCount(date) {
+    var tot = 0, dn = 0;
+    S.forEach(function (s) { if (s.date === date) { tot++; if (state.done[s.rank]) dn++; } });
+    return dn + '/' + tot;
+  }
+  function renderList() {
+    var rows = S.filter(visible);
+    $('showing').textContent = 'Showing ' + rows.length + ' of ' + N;
+    if (!rows.length) {
+      var msg = ui.status === 'done' ? 'No mocks ticked yet. Tap a circle when you finish one.'
+        : ui.status === 'pending' ? 'Every mock in this view is finished.'
+        : 'No shifts match these filters.';
+      listEl.innerHTML = '<div class="box"><div class="empty">' + msg + '</div></div>';
+      return;
+    }
+    if (ui.sort === 'diff') {
+      rows.sort(function (a, b) { return a.rank - b.rank; });
+      listEl.innerHTML = '<div class="box"><ol>' + rows.map(rowHTML).join('') + '</ol></div>';
+      return;
+    }
+    rows.sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : a.shift - b.shift; });
+    var html = '', cur = null, buf = '';
+    function close() {
+      if (cur === null) return;
+      var p = dparts(cur);
+      html += '<section class="group" data-date="' + cur + '"><div class="box"><h3><span>' + p.dow + ' · ' + p.d + ' ' + p.mon + '</span><span class="gc">' + dayCount(cur) + '</span></h3><ol>' + buf + '</ol></div></section>';
+    }
+    rows.forEach(function (s) {
+      if (s.date !== cur) { close(); cur = s.date; buf = ''; }
+      buf += rowHTML(s);
+    });
+    close();
+    listEl.innerHTML = html;
+  }
+
+  function buildDots() {
+    $('dots').innerHTML = S.map(function (s) {
+      return '<i data-rank="' + s.rank + '" style="--t:' + s.t.toFixed(3) + '"></i>';
+    }).join('');
+  }
+  function renderSummary() {
+    var done = 0, per = { 1: [0, 0], 2: [0, 0], 3: [0, 0] };
+    S.forEach(function (s) {
+      per[s.shift][1]++;
+      if (state.done[s.rank]) { done++; per[s.shift][0]++; }
+    });
+    var pct = Math.round(done / N * 100);
+    $('doneN').textContent = done;
+    $('ofN').textContent = '/ ' + N;
+    $('pct').textContent = pct + '%';
+    $('fill').style.width = pct + '%';
+    $('barFill').style.width = pct + '%';
+    $('barCount').textContent = done + '/' + N;
+    $('track').setAttribute('aria-valuenow', done);
+    $('cAll').textContent = N;
+    $('cPending').textContent = N - done;
+    $('cDone').textContent = done;
+    Array.prototype.forEach.call($('dots').children, function (d) {
+      d.classList.toggle('on', !!state.done[d.getAttribute('data-rank')]);
+    });
+    $('shiftStats').innerHTML = [1, 2, 3].map(function (k) {
+      var w = per[k][1] ? Math.round(per[k][0] / per[k][1] * 100) : 0;
+      return '<div class="ss"><span class="sl">Shift ' + k + '</span><span class="st">' + SLOT[k] + '</span><span class="sc">' + per[k][0] + '/' + per[k][1] + '</span><div class="mini"><i style="width:' + w + '%"></i></div></div>';
+    }).join('');
+  }
+  function syncControls() {
+    Array.prototype.forEach.call(document.querySelectorAll('[data-status]'), function (b) { b.setAttribute('aria-pressed', String(b.getAttribute('data-status') === ui.status)); });
+    Array.prototype.forEach.call(document.querySelectorAll('[data-shift]'), function (b) { b.setAttribute('aria-pressed', String(+b.getAttribute('data-shift') === ui.shift)); });
+    Array.prototype.forEach.call(document.querySelectorAll('[data-sort]'), function (b) { b.setAttribute('aria-pressed', String(b.getAttribute('data-sort') === ui.sort)); });
+  }
+  function renderAll() { syncControls(); renderSummary(); renderList(); }
+
+  /* ---------- actions ---------- */
+  function rowEl(rank) { return listEl.querySelector('.row[data-rank="' + rank + '"]'); }
+  function patchRow(rank) {
+    var el = rowEl(rank);
+    if (!el) return;
+    var s = BY[rank];
+    el.classList.toggle('is-done', !!state.done[rank]);
+    el.querySelector('.l2').textContent = line2(s);
+    Array.prototype.forEach.call(listEl.querySelectorAll('.group'), function (g) {
+      g.querySelector('.gc').textContent = dayCount(g.getAttribute('data-date'));
+    });
+  }
+  function toggle(rank, checked) {
+    if (checked) state.done[rank] = todayISO(); else delete state.done[rank];
+    touch();
+    patchRow(rank);
+    renderSummary();
+    var leaves = (ui.status === 'pending' && checked) || (ui.status === 'done' && !checked);
+    if (leaves) {
+      clearTimeout(rerenderTimer);
+      rerenderTimer = setTimeout(renderList, 700);
+    }
+  }
+  function setNote(rank, value) {
+    var v = value.slice(0, 80);
+    if (v.trim()) state.notes[rank] = v; else delete state.notes[rank];
+    var el = rowEl(rank);
+    if (el) {
+      var np = el.querySelector('.np');
+      np.textContent = v.trim();
+      np.hidden = !v.trim();
+    }
+    touch();
+  }
+  function toggleOpen(rank) {
+    var open = !ui.open[rank];
+    if (open) ui.open[rank] = true; else delete ui.open[rank];
+    var b = $('hd-' + rank), d = $('det-' + rank);
+    if (b) b.setAttribute('aria-expanded', String(open));
+    if (d) d.hidden = !open;
+  }
+
+  listEl.addEventListener('change', function (e) {
+    var t = e.target;
+    if (t && t.type === 'checkbox') toggle(+t.getAttribute('data-rank'), t.checked);
+  });
+  listEl.addEventListener('click', function (e) {
+    var b = e.target.closest ? e.target.closest('.head') : null;
+    if (b) toggleOpen(+b.getAttribute('data-rank'));
+  });
+  listEl.addEventListener('input', function (e) {
+    var t = e.target;
+    if (t && t.classList && t.classList.contains('note')) setNote(+t.getAttribute('data-rank'), t.value);
+  });
+
+  document.addEventListener('click', function (e) {
+    var b = e.target.closest ? e.target.closest('button') : null;
+    if (!b) return;
+    var changed = false;
+    if (b.hasAttribute('data-status')) { ui.status = b.getAttribute('data-status'); changed = true; }
+    else if (b.hasAttribute('data-shift')) { ui.shift = +b.getAttribute('data-shift'); changed = true; }
+    else if (b.hasAttribute('data-sort')) { ui.sort = b.getAttribute('data-sort'); changed = true; }
+    if (changed) { clearTimeout(rerenderTimer); syncControls(); renderList(); saveUI(); }
+  });
+
+  $('resetAsk').addEventListener('click', function () {
+    var n = Object.keys(state.done).length;
+    $('resetMsg').textContent = 'Clear ' + n + ' finished ' + (n === 1 ? 'mock' : 'mocks') + ' and all notes?';
+    $('resetAsk').hidden = true;
+    $('resetConfirm').hidden = false;
+    $('resetNo').focus();
+  });
+  $('resetNo').addEventListener('click', function () {
+    $('resetConfirm').hidden = true;
+    $('resetAsk').hidden = false;
+    $('resetAsk').focus();
+  });
+  $('resetYes').addEventListener('click', function () {
+    state = { v: 1, done: {}, notes: {} };
+    touch();
+    renderAll();
+    $('resetConfirm').hidden = true;
+    $('resetAsk').hidden = false;
+  });
+
+  /* sticky progress bar appears once the summary card scrolls away */
+  var bar = $('bar');
+  if ('IntersectionObserver' in window) {
+    new IntersectionObserver(function (entries) {
+      var en = entries[0];
+      bar.classList.toggle('on', !en.isIntersecting && en.boundingClientRect.top < 0);
+    }).observe($('summary'));
+  }
+
+  /* ---------- start ---------- */
+  loadLocal();
+  buildDots();
+  renderAll();
+  idleStatus();
+  initSync();
+})();
+</script>
+
+
+<script>
+if ("serviceWorker" in navigator &&
+    (location.protocol === "https:" || location.hostname === "localhost")) {
+  window.addEventListener("load", function () {
+    navigator.serviceWorker.register("./sw.js").catch(function (err) {
+      console.warn("Offline worker registration failed:", err);
+    });
+  });
+}
+</script>
+</body></html>
